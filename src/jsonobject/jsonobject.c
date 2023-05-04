@@ -359,7 +359,7 @@ static void print_value_indent(json_value *val, size_t level, bool ismbr) {
 
     switch(val->type) {
     case JSON_NUMBER:
-        fprintf(stderr, "%s"PURPLE("%f"), indent, val->number);
+        fprintf(stderr, "%s"PURPLE("%e"), indent, val->number);
         break;
     case JSON_STRING:
         fprintf(stderr, "%s"YELLOW("\"%s\""), indent, val->string);

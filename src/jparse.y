@@ -239,14 +239,14 @@ value:      object  { $$ = json_obj($1); }
 |           "false" { $$ = json_bool(false); }
 |           "null"  { $$ = json_null(); };
 object:     '{' '}' { $$ = new_json_object(); }
-|           '{' { begin_scope(ctx); } members '}' { $$ = end_scope(ctx); };
+|           '{'     { begin_scope(ctx); } members '}' { $$ = end_scope(ctx); };
 members:    member  { push_member(ctx, $1); }
-|           member  { push_member(ctx, $1); } ',' members;
+|           members ',' member { push_member(ctx, $3); } ;
 member:     STRING ':' element { $$ = new_json_member($1, $3); };
 array:      '[' ']' { $$ = new_json_array(); }
-|           '[' { begin_arr(ctx); } elements ']' { $$ = end_arr(ctx); };
+|           '['     { begin_arr(ctx); } elements ']' { $$ = end_arr(ctx); };
 elements:   element { push_value(ctx, $1); }
-|           element { push_value(ctx, $1); } ',' elements;
+|           elements ',' element { push_value(ctx, $3); };
 element:    value   { $$ = $1; };
 %%
 
@@ -260,7 +260,7 @@ start_lex:
     /* re2c */
     re2c:yyfill:enable = 0;
     re2c:define:YYCURSOR = ctx->cursor;
-    re2c:define:YYCTYPE = char;
+    re2c:define:YYCTYPE = 'unsigned char';
 
     // Whitespace:
     '\000'              { return YYEOF; }
@@ -268,10 +268,10 @@ start_lex:
     [\t\v\b\f ]         { ctx->col++; goto start_lex; }
 
     // Numbers (floats and ints):
-    frac  = [0-9]* "." [0-9]+ | [0-9]+ ".";
-    exp   = 'e' [+-]? [0-9]+;
-    float = frac exp? | [0-9]+ exp;
-    [1-9][0-9]* | float { ctx->col += (ctx->cursor-anchor);
+    exp    = ('e'|'E') [+-]? [0-9]+;
+    frac   = '.' [0-9]+;
+    number = [-]? ('0'|[1-9][0-9]*) frac? exp?;
+    number              { ctx->col += (ctx->cursor-anchor);
                           yylval.numval = strtod(anchor, NULL);
                           return NUMBER; }
 
@@ -280,8 +280,13 @@ start_lex:
     "true"              { ctx->col += 4; return TOK_TRUE; }
     "false"             { ctx->col += 5; return TOK_FALSE; }
 
+    // TODO: UTF-8 support
     // Strings:
-    "\"" [^\000"]* "\""     { ctx->col += (ctx->cursor-anchor);
+    hex_digit           = [0-9A-Fa-f];
+    four_hex            = hex_digit{4};
+    escaped             = "\\t" | "\\n" | "\\\"" | "\\r" | "\\\\" | "/" | "\\b" | "\\f" | ("\\u" four_hex);
+    unicode             = escaped | [^\000"\"""\\"];
+    "\"" unicode* "\""   { ctx->col += (ctx->cursor-anchor);
                           yylval.strval = strndup(anchor+1, ctx->cursor-anchor-2);
                           return STRING; }
 
@@ -292,8 +297,9 @@ start_lex:
 
 void yyerror(struct lex_ctx *ctx, const char *msg)
 {
-    fprintf(stderr, "\033[1m%s:%zu:%zu:\033[m \033[1;91merror:\033[m %s\n",
+    fprintf(stderr, "\033[1m%s:%zu:%zu:\033[m \033[1;91merror:\033[m %s",
             ctx->filename, ctx->line, ctx->col, msg);
+    fprintf(stderr, " '\033[1m0x%02hhx\033[m'\n", *(ctx->cursor));
 
     exit(EXIT_FAILURE); // All errors are currently fatal :/
 }
@@ -366,10 +372,10 @@ int main(int argc, const char *argv[])
         fprintf(stderr, "EMPTY\n");
         goto cleanup;
     }
-
+#ifdef DEBUG
     print_json_value(ctx.top_val);
     fprintf(stderr, "\n");
-
+#endif
     dispose_json_value(ctx.top_val);
 
 cleanup:

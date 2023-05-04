@@ -1,8 +1,8 @@
 CC := gcc
-CFLAGS := -Wall -Wextra -g -std=gnu11 -O3 -march=native #-fsanitize=address
+CFLAGS := -Wall -Wextra -g -std=gnu11 -O3 -march=native -DDEBUG #-fsanitize=address
 
 YACC := bison
-YFLAGS := -t --report=all --language=c
+YFLAGS := #-t --report=all --language=c
 
 TARGET_EXEC := jparse
 
@@ -24,7 +24,7 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/jsonobject/jsonobject.c
 
 %.c: %.y
 	$(YACC) $(YFLAGS) -o $^.re $^
-	re2c -o $@ $^.re	
+	re2c -o $@ $^.re --utf-8
 
 .PHONY: clean run
 .PRECIOUS: src/jparse.c src/jparse.re
