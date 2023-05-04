@@ -1,8 +1,8 @@
 CC := gcc
-CFLAGS := -Wall -Wextra -g -std=gnu11 -O3 -march=native -DDEBUG #-fsanitize=address
+CFLAGS := -Wall -Wextra -g -std=gnu11 -O3 -march=native
 
 YACC := bison
-YFLAGS := #-t --report=all --language=c
+YFLAGS := -t --language=c
 
 TARGET_EXEC := jparse
 

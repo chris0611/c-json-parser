@@ -1,0 +1,9 @@
+{
+    "backwards slash": "\\",
+    "horizontal tab": "\t",
+    "hex numbers": "\uFFFF",
+    "carriage ret": "\r",
+    "newlines": "\n",
+    "unicode": "( *ﾟ▽ﾟ* っ)",
+    "array": [1,2,3.2E-5]
+}

@@ -8,7 +8,7 @@
 
 #define LOAD_FACTOR (60)        // Grow Hashmap if 60% filled
 #define INIT_CAPACITY (64)      // Initial capacity of array
-#define DOWNSIZE_LIMIT (25)     // Shrink ifvless than 25% filled
+#define DOWNSIZE_LIMIT (25)     // Shrink if less than 25% filled
 
 
 #define SET_INDENT(ptr, level)                      \
@@ -19,9 +19,9 @@
         ptr = tmp;                                  \
     } while (0)
 
-#define ORANGE(str) "\033[38;5;132m" str "\033[m"
-#define PURPLE(str) "\033[38;5;108m" str "\033[m"
-#define YELLOW(str) "\033[38;5;145m" str "\033[m"
+#define KEY_COLOR(str)      "\033[38;5;132m" str "\033[m"
+#define LITERAL_COLOR(str)  "\033[38;5;108m" str "\033[m"
+#define STRING_COLOR(str)   "\033[38;5;145m" str "\033[m"
 
 struct json_array {
     size_t size;
@@ -359,16 +359,16 @@ static void print_value_indent(json_value *val, size_t level, bool ismbr) {
 
     switch(val->type) {
     case JSON_NUMBER:
-        fprintf(stderr, "%s"PURPLE("%e"), indent, val->number);
+        fprintf(stderr, "%s"LITERAL_COLOR("%g"), indent, val->number);
         break;
     case JSON_STRING:
-        fprintf(stderr, "%s"YELLOW("\"%s\""), indent, val->string);
+        fprintf(stderr, "%s"STRING_COLOR("\"%s\""), indent, val->string);
         break;
     case JSON_BOOL:
-        fprintf(stderr, "%s"PURPLE("%s"), indent, (val->boolean) ? "true" : "false");
+        fprintf(stderr, "%s"LITERAL_COLOR("%s"), indent, (val->boolean) ? "true" : "false");
         break;
     case JSON_NULL:
-        fprintf(stderr, "%s"PURPLE("null"), indent);
+        fprintf(stderr, "%s"LITERAL_COLOR("null"), indent);
         break;
     case JSON_ARRAY:
         print_array_indent(val->arr, level, ismbr);
@@ -377,7 +377,7 @@ static void print_value_indent(json_value *val, size_t level, bool ismbr) {
         print_object_indent(val->obj, level, ismbr);
         break;
     default:
-        fprintf(stderr, PURPLE("<unknown type>"));
+        fprintf(stderr, LITERAL_COLOR("<unknown type>"));
     }
 }
 
@@ -386,7 +386,7 @@ static void print_member_indent(json_member *mbr, size_t level) {
     char *indent = NULL;
     SET_INDENT(indent, level);
 
-    fprintf(stderr, "%s"ORANGE("\"%s\"")": ", indent, mbr->key);
+    fprintf(stderr, "%s"KEY_COLOR("\"%s\"")": ", indent, mbr->key);
     print_value_indent(mbr->val, level, true);
 }
 

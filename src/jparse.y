@@ -253,7 +253,7 @@ element:    value   { $$ = $1; };
 
 int yylex(struct lex_ctx *ctx)
 {
-    const char *anchor, *YYMARKER;
+    const char *anchor, *YYMARKER = NULL;
 start_lex:
     anchor = ctx->cursor;
 %{
@@ -284,7 +284,8 @@ start_lex:
     // Strings:
     hex_digit           = [0-9A-Fa-f];
     four_hex            = hex_digit{4};
-    escaped             = "\\t" | "\\n" | "\\\"" | "\\r" | "\\\\" | "/" | "\\b" | "\\f" | ("\\u" four_hex);
+    escaped             = "\\t" | "\\n" | "\\\"" | "\\r" | "\\\\" | 
+                          "/" | "\\b" | "\\f" | ("\\u" four_hex);
     unicode             = escaped | [^\000"\"""\\"];
     "\"" unicode* "\""   { ctx->col += (ctx->cursor-anchor);
                           yylval.strval = strndup(anchor+1, ctx->cursor-anchor-2);
@@ -328,9 +329,6 @@ static char *read_into_str(FILE *stream, size_t *len)
 
 int main(int argc, const char *argv[])
 {
-    // DEBUG
-    //yydebug = 1;
-
     if (argc != 2) {
         fprintf(stderr, "Usage: %s <json-file>\n", argv[0]);
         return EXIT_FAILURE;
@@ -372,10 +370,9 @@ int main(int argc, const char *argv[])
         fprintf(stderr, "EMPTY\n");
         goto cleanup;
     }
-#ifdef DEBUG
+
     print_json_value(ctx.top_val);
     fprintf(stderr, "\n");
-#endif
     dispose_json_value(ctx.top_val);
 
 cleanup:
