@@ -220,7 +220,9 @@ void push_member(struct lex_ctx *ctx, json_member *mbr) {
 %token TOK_FALSE "false"
 %token TOK_NULL "null"
 
-
+%type<strval>   STRING
+%type<numval>   NUMBER
+%type<boolean>  TOK_TRUE TOK_FALSE
 %type<val>      value element
 %type<obj>      object
 %type<arr>      array
