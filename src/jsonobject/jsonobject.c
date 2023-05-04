@@ -23,6 +23,24 @@
 #define LITERAL_COLOR(str)  "\033[38;5;108m" str "\033[m"
 #define STRING_COLOR(str)   "\033[38;5;145m" str "\033[m"
 
+
+// Structure definitions:
+struct json_value {
+    union {
+        struct json_object *obj;
+        struct json_array *arr;
+        double number;
+        char *string;
+        bool boolean;
+    };
+    json_value_type type;
+};
+
+struct json_member {
+    const char *key;
+    struct json_value *val;
+};
+
 struct json_array {
     size_t size;
     size_t capacity;
@@ -34,6 +52,7 @@ struct json_object {
     size_t capacity;
     struct json_member **members;
 };
+
 
 // Static function prototypes
 static void print_array_indent(json_array *arr, size_t level, bool ismbr);

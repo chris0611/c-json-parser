@@ -6,6 +6,8 @@
 
 typedef struct json_object json_object;
 typedef struct json_array json_array;
+typedef struct json_value json_value;
+typedef struct json_member json_member;
 
 // Type enumerations:
 typedef enum json_value_type {
@@ -16,24 +18,6 @@ typedef enum json_value_type {
     JSON_BOOL,
     JSON_NULL
 } json_value_type;
-
-
-// Structure definitions:
-typedef struct json_value {
-    union {
-        struct json_object *obj;
-        struct json_array *arr;
-        double number;
-        char *string;
-        bool boolean;
-    };
-    json_value_type type;
-} json_value;
-
-typedef struct json_member {
-    const char *key;
-    struct json_value *val;
-} json_member;
 
 
 // Function prototypes:
