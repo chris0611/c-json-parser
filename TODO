@@ -1,0 +1,5 @@
+# TODO
+
+- Detect and warn about duplicate keys in objects
+- Better memory management (currently reallocates too often)
+- Better warnings and error handling in general

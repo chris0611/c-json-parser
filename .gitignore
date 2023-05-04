@@ -1,0 +1,10 @@
+*
+!src
+!data
+!data/*.json
+!src/**
+!Makefile
+!.gitignore
+!README*
+!TODO
+!build
