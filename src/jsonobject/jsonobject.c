@@ -1,5 +1,7 @@
 #include "jsonobject.h"
 
+#define __STDC_WANT_IEC_60559_BFP_EXT__ // strfromd()
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -23,6 +25,15 @@
 #define LITERAL_COLOR(str)  "\033[38;5;108m" str "\033[m"
 #define STRING_COLOR(str)   "\033[38;5;145m" str "\033[m"
 
+// Type enumerations:
+typedef enum json_value_type {
+    JSON_OBJECT = 1,
+    JSON_ARRAY,
+    JSON_NUMBER,
+    JSON_STRING,
+    JSON_BOOL,
+    JSON_NULL
+} json_value_type;
 
 // Structure definitions:
 struct json_value {
@@ -55,10 +66,10 @@ struct json_object {
 
 
 // Static function prototypes
-static void print_array_indent(json_array *arr, size_t level, bool ismbr);
-static void print_object_indent(json_object *obj, size_t level, bool ismbr);
-static void print_value_indent(json_value *val, size_t level, bool ismbr);
-static void print_member_indent(json_member *mbr, size_t level);
+static void print_array_indent(const json_array *arr, size_t level, bool ismbr);
+static void print_object_indent(const json_object *obj, size_t level, bool ismbr);
+static void print_value_indent(const json_value *val, size_t level, bool ismbr);
+static void print_member_indent(const json_member *mbr, size_t level);
 
 
 static uint64_t hash_key(const char *key) {
@@ -81,7 +92,7 @@ static uint64_t quad_probe(const uint64_t idx) {
 }
 
 
-static void handle_collision(const json_member ** mbrs, size_t len,
+static bool handle_collision(const json_member ** mbrs, size_t len,
                              size_t start_idx, const json_member *mbr) {
     // Do something smarter than linear probing?
     size_t idx = start_idx;
@@ -89,6 +100,10 @@ static void handle_collision(const json_member ** mbrs, size_t len,
     // Should _always_ have an open spot
     while (true) {
         if (mbrs[idx] != NULL) {
+            if (strcmp(mbrs[idx]->key, mbr->key) == 0) {
+                // This key already exists...
+                return false;
+            }
             idx = (idx + quad_probe(idx)) % len;
             continue;
         }
@@ -96,6 +111,7 @@ static void handle_collision(const json_member ** mbrs, size_t len,
     }
 
     mbrs[idx] = mbr;
+    return true;
 }
 
 
@@ -111,8 +127,9 @@ static bool resize_json_object(json_object *obj) {
 
         const size_t idx = hash_key(obj->members[i]->key) % new_capacity;
         if (new_arr[idx] != NULL) {
-            handle_collision((const json_member**)new_arr,
-                             new_capacity, idx, obj->members[i]);
+            if (!handle_collision((const json_member**)new_arr,
+                                  new_capacity, idx, obj->members[i]))
+                return false;
         } else {
             new_arr[idx] = obj->members[i];
         }
@@ -272,8 +289,9 @@ bool add_member(json_object *const obj, const json_member *mbr) {
 
     const size_t idx = hash_key(mbr->key) % obj->capacity;
     if (obj->members[idx] != NULL) {
-        handle_collision((const json_member**)obj->members,
-                         obj->capacity, idx, mbr);
+        if (!handle_collision((const json_member**)obj->members,
+                              obj->capacity, idx, mbr))
+            return false;
     } else {
         obj->members[idx] = (json_member*)mbr;
     }
@@ -293,20 +311,20 @@ size_t size_json_array(const json_array *arr) {
     return arr->size;
 }
 
-void print_json_value(json_value *val) {
+void print_json_value(const json_value *const val) {
     print_value_indent(val, 0, false);
 }
 
-void print_json_object(json_object *obj) {
+void print_json_object(const json_object *obj) {
     print_object_indent(obj, 0, false);
 }
 
-void print_json_array(json_array *arr) {
+void print_json_array(const json_array *arr) {
     print_array_indent(arr, 0, false);
 }
 
 
-static void print_array_indent(json_array *arr, size_t level, bool ismbr) {
+static void print_array_indent(const json_array *const arr, size_t level, bool ismbr) {
     char *indent = NULL;
     char *end_indt = NULL;
 
@@ -337,7 +355,7 @@ static void print_array_indent(json_array *arr, size_t level, bool ismbr) {
 }
 
 
-static void print_object_indent(json_object *obj, size_t level, bool ismbr) {
+static void print_object_indent(const json_object *obj, size_t level, bool ismbr) {
     char *indent = NULL;
     char *end_idnt = NULL;
 
@@ -367,7 +385,7 @@ static void print_object_indent(json_object *obj, size_t level, bool ismbr) {
 }
 
 
-static void print_value_indent(json_value *val, size_t level, bool ismbr) {
+static void print_value_indent(const json_value *val, size_t level, bool ismbr) {
     char *indent = NULL;
 
     if (ismbr) {
@@ -401,7 +419,7 @@ static void print_value_indent(json_value *val, size_t level, bool ismbr) {
 }
 
 
-static void print_member_indent(json_member *mbr, size_t level) {
+static void print_member_indent(const json_member *mbr, size_t level) {
     char *indent = NULL;
     SET_INDENT(indent, level);
 
@@ -484,4 +502,131 @@ json_value *json_num(double num) {
     new_val->number = num;
 
     return new_val;
+}
+
+
+const json_value *get_value_from_path(const char *path, json_value *val) {
+    // Split `path` on '/' into `members`
+    char **members = NULL;
+
+    // TODO
+
+    return NULL;
+}
+
+
+const char *get_key_from_member(const json_member *mbr) {
+    return mbr->key;
+}
+
+
+/* Appends `str2` to `str1` */
+static char *concat(char *str1, char *str2) {
+    if (str2 == NULL) {
+        return str1;
+    }
+
+    size_t len1 = (str1) ? strlen(str1) : 0;
+    size_t len2 = strlen(str2);
+
+    char *buf = realloc(str1, (len1 + len2 + 1) * sizeof(char));
+    assert(buf != NULL);
+    if (str1 == NULL) {
+        buf[0] = '\0';
+    }
+
+    strcat(buf, str2);
+
+    return buf;
+}
+
+
+char *stringify_json_member(const json_member *mbr) {
+    char *str = calloc(strlen(mbr->key) + 4, sizeof(char));
+    assert(str != NULL);
+    sprintf(str, "\"%s\":", mbr->key);
+
+    char *tmp = stringify_json_value(mbr->val);
+    str = concat(str, tmp);
+    free(tmp);
+    return str;
+}
+
+
+char *stringify_json_object(const json_object *obj) {
+    char *str = calloc(2, sizeof(char));
+    strcpy(str, "{");
+
+    size_t seen = 0;
+
+    for (size_t i = 0; i < obj->capacity; i++) {
+        if (obj->members[i] == NULL) continue;
+        char *tmp = stringify_json_member(obj->members[i]);
+        str = concat(str, tmp);
+        free(tmp);
+        seen++;
+        if (seen != obj->size) {
+            str = concat(str, ",");
+        }
+    }
+
+    return concat(str, "}");
+}
+
+
+char *stringify_json_array(const json_array *arr) {
+    char *str = calloc(2, sizeof(char));
+    strcpy(str, "[");
+
+    for (size_t i = 0; i < arr->size; i++) {
+        if (arr->values[i] == NULL) continue;
+        char *tmp = stringify_json_value(arr->values[i]);
+        str = concat(str, tmp);
+        free(tmp);
+
+        if ((i + 1) != arr->size) {
+            str = concat(str, ",");
+        }
+    }
+
+    return concat(str, "]");
+}
+
+
+char *stringify_json_value(const json_value *val) {
+    if (val == NULL) return NULL;
+
+    char *str = NULL;
+
+    switch (val->type) {
+    case JSON_OBJECT:
+        str = stringify_json_object(val->obj);
+        break;
+    case JSON_ARRAY:
+        str = stringify_json_array(val->arr);
+        break;
+    case JSON_STRING:
+        str = concat(str, "\"");
+        str = concat(str, val->string);
+        str = concat(str, "\"");
+        break;
+    case JSON_NUMBER:
+        {   // TODO
+        char buf[64] = {0};
+        strfromd(buf, 63, "%g", val->number);
+        str = concat(str, buf);
+        }
+        break;
+    case JSON_BOOL:
+        str = concat(str, (val->boolean) ? "true" : "false");
+        break;
+    case JSON_NULL:
+        str = concat(str, "null");
+        break;
+    default:
+    // unknown type
+        str = concat(str, "<undefined>");
+        break;
+    }
+    return str;
 }

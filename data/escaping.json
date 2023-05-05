@@ -1,9 +1,13 @@
 {
     "backwards slash": "\\",
     "horizontal tab": "\t",
-    "hex numbers": "\uFFFF",
-    "carriage ret": "\r",
-    "newlines": "\n",
+    "hex numbers": ["\u0123", "\u4567", "\u89AB", "\uCDEF"],
+    "carriage ret": "\r","newlines": "\n",
     "unicode": "( *ﾟ▽ﾟ* っ)",
-    "array": [1,2,3.2E-5]
+    "array": [1e+5,2,3.2E-5],
+    "quote": "\"",
+    "multiple": "\"\\\t\n\r",
+    "bruh": {
+        "\\\"Nam[{": [ 116, "\\\\"]
+    }
 }

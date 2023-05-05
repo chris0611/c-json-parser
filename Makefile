@@ -1,5 +1,5 @@
 CC := gcc
-CFLAGS := -Wall -Wextra -g -std=gnu11 -O3 -march=native
+CFLAGS := -Wall -Wextra -g -std=gnu17 -O3 -march=native -DNDEBUG
 
 YACC := bison
 YFLAGS := -t --language=c

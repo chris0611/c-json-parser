@@ -1,8 +1,13 @@
 *
 !src
 !data
-!data/*.json
-!src/**
+!data/escaping.json
+!data/array.json
+!data/empty.json
+!data/error.json
+!data/nesting.json
+!data/test.json
+!src/*.y
 !Makefile
 !.gitignore
 !README*

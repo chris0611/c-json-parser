@@ -35,7 +35,6 @@ enum json_token lex(struct lex_ctx*);
 
 typedef struct node {
     json_member *mbr;
-
     struct node *next;
 } node;
 
@@ -49,6 +48,7 @@ typedef struct scope {
 
     json_array **arrs;      // Stack keeping track of arrays in scope
     size_t num_arrs;
+    size_t arr_cap;
 } scope;
 
 struct lex_ctx {
@@ -109,8 +109,13 @@ json_object *end_scope(struct lex_ctx *ctx) {
     json_object *parsed_obj = curr->obj;
     node *tmp = curr->head;
 
+    // Check if member with this key already exists
+
     do {
-        add_member(parsed_obj, tmp->mbr);
+        if (!add_member(parsed_obj, tmp->mbr)) {
+            fprintf(stderr, "Warning: duplicate object key '%s'\n",
+                    get_key_from_member(tmp->mbr));
+        }
         node *next = tmp->next;
         free(tmp);
         tmp = next;
@@ -131,7 +136,7 @@ void begin_arr(struct lex_ctx *ctx) {
     scope *curr = get_scope(ctx);
 
     if (curr->arrs == NULL) {
-        curr->arrs = calloc(1, sizeof(json_array*));
+        curr->arrs = calloc(INIT_SCOPE_CAP, sizeof(json_array*));
         assert(curr->arrs != NULL);
 
         curr->arrs[0] = new_arr;
@@ -139,13 +144,15 @@ void begin_arr(struct lex_ctx *ctx) {
         return;
     }
 
-    const size_t new_size = curr->num_arrs + 1;
-    json_array **tmp = realloc(curr->arrs, sizeof(json_array*) * new_size);
-    assert(tmp != NULL);
+    if (curr->num_arrs == curr->arr_cap) {
+        const size_t new_size = curr->num_arrs * 2;
+        json_array **tmp = realloc(curr->arrs, sizeof(json_array*) * new_size);
+        assert(tmp != NULL);
+        curr->arr_cap = new_size;
+        curr->arrs = tmp;
+    }
 
-    tmp[new_size-1] = new_arr;
-    curr->num_arrs = new_size;
-    curr->arrs = tmp;
+    curr->arrs[curr->num_arrs++] = new_arr;
 }
 
 json_array *end_arr(struct lex_ctx *ctx) {
@@ -157,21 +164,12 @@ json_array *end_arr(struct lex_ctx *ctx) {
 
     if (curr->num_arrs == 1) {
         // special case, free
-        curr->num_arrs = 0;
+        curr->arr_cap = 0;
         free(curr->arrs);
         curr->arrs = NULL;
-        return ret;
     }
 
-    size_t new_size = curr->num_arrs - 1;
-
-    // TODO: check for errs
-    json_array **tmp = realloc(curr->arrs, (sizeof(json_array*) * new_size));
-    assert(tmp != NULL);
-
-    curr->arrs = tmp;
     curr->num_arrs--;
-
     return ret;
 }
 
@@ -280,14 +278,11 @@ start_lex:
     "true"              { ctx->col += 4; return TOK_TRUE; }
     "false"             { ctx->col += 5; return TOK_FALSE; }
 
-    // TODO: UTF-8 support
     // Strings:
-    hex_digit           = [0-9A-Fa-f];
-    four_hex            = hex_digit{4};
-    escaped             = "\\t" | "\\n" | "\\\"" | "\\r" | "\\\\" | 
-                          "/" | "\\b" | "\\f" | ("\\u" four_hex);
-    unicode             = escaped | [^\000"\"""\\"];
-    "\"" unicode* "\""   { ctx->col += (ctx->cursor-anchor);
+    hex                 = [0-9A-Fa-f]{4};
+    escaped             = ("\\" [tnbfr"\"""\\"]) | "/" | ("\\u" hex);
+    legal               = escaped | [^\000"\"""\\"];
+    "\"" legal* "\""    { ctx->col += (ctx->cursor-anchor);
                           yylval.strval = strndup(anchor+1, ctx->cursor-anchor-2);
                           return STRING; }
 
@@ -364,15 +359,18 @@ int main(int argc, const char *argv[])
         goto cleanup;
     }
 
-    fprintf(stderr, "Finished parsing: %s\n", argv[1]);
+    //fprintf(stderr, "Finished parsing: %s\n", argv[1]);
 
     if (ctx.top_val == NULL) {
         fprintf(stderr, "EMPTY\n");
         goto cleanup;
     }
 
-    print_json_value(ctx.top_val);
-    fprintf(stderr, "\n");
+    //print_json_value(ctx.top_val);
+    //char *str = stringify_json_value(ctx.top_val);
+    //printf("%s\n", str);
+    //free(str);
+    //fprintf(stderr, "\n");
     dispose_json_value(ctx.top_val);
 
 cleanup:
